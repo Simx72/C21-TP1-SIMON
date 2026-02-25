@@ -154,20 +154,24 @@ bool ajouterClient(Banque &b, const Client& c) {
 }
 
 bool questionOuiNon(string question) {
+  cout << question << " (O/N) ";
   int x = wherex(), y = wherey();
+  gotoxy(x, y + 5);
+  cout << "ekis esta en " << x << " y Y esta en " << y << "\n";
   while(true) {
     gotoxy(x, y);
-    clreol();
-    gotoxy(x, y);
-    io_clean();
-    gotoxy(x, y);
-    cout << question << " (O/N) ";
-    int ch = _getch();
-    if (ch == 'O') {
+    // clreol();
+    // io_clean();
+    // gotoxy(x, y);
+    int ch = toupper(_getch());
+    cout << (char)ch << "(" << ch << ")\n";
+    /*if (ch == 'O') {
+      cout << "true\n";
       return true;
     } else if (ch == 'N') {
+      cout << "false\n";
       return false;
-    }/* else {
+    }*//* else {
       continue;
     }*/
   };
