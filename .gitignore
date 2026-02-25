@@ -2,5 +2,6 @@
 build/
 .zed/
 out/
+.vs/
 *.exe
 *.kate-swp
