@@ -205,6 +205,7 @@ void io_clean()                                             // pour vider les 2 
   cin.clear();                                              // s'assure que le cin est remis en marche
   // your function didn't work and it's not standard
   // https://www.geeksforgeeks.org/cpp/how-to-use-cin-fail-method-in-cpp/
+#undef max
   cin.ignore(numeric_limits<streamsize>::max(), '\n');      // vide le tampon du cin
   while (_kbhit())
     (void)_getch();                                           // vide le tampon de la console
