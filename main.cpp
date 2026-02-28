@@ -1,12 +1,13 @@
-#include <cctype>
 #include <cmath>
-#include <conio.h>
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <string>
+
+#include <conio.h>
 #include <windows.h>
 
 #include "cvm_23.h"
@@ -93,12 +94,26 @@ io_round(double v,
 
 // Mes déclarations des fonctions
 
+// INPUT (Élements d'interfaces pour recevoir des informations)
 string recupererString(string question);
 double recupererArgent(string question, double min, double max);
-void printDate(time_t time);
+bool questionOuiNon(string question);
+
+// VIEWS (Afficher des informations)
+void printBreaks(size_t n);
+void printCenter(string text, size_t width);
+void afficherClient(const Client & client);
+
+// MODELS (Modifier des données)
 bool ajouterClient(Banque &b, const Client& c);
+bool supprimerClient(Banque &b, const Client& c);
+optional<Client> getClient(const Banque &b, size_t id);
+string toArgentStr(double argent);
+string toDateStr(time_t time);
 
 // Mes définitions des fonctions
+
+// INPUT
 
 string recupererString(string question) {
   const uint32_t width = 19;
@@ -137,11 +152,110 @@ double recupererArgent(string question, double min, double max) {
   return reponse;
 }
 
-void printDate(time_t t) {
-  struct tm timeinfo;
-  localtime_s(&timeinfo, &t);
-  cout << put_time(&timeinfo, "%d/%m/%Y");
+bool questionOuiNon(string question) {
+  cout << question << " (O/N) ";
+  int x = wherex(), y = wherey();
+  int ch;
+  do {
+    gotoxy(x, y);
+    clreol();
+    io_clean();
+    ch = toupper(_getch());
+  } while (ch != 'O' && ch != 'N');
+  return ch == 'O';
 }
+
+// VIEWS
+
+void printBreaks(size_t n) {
+  while (n != 0) {
+    cout << endl;
+    n--;
+  }
+}
+void printRepeat(char c, size_t n) {
+  while (n != 0) {
+    cout << c;
+    n--;
+  }
+}
+void printCenter(string text, size_t width) {
+  size_t textSize = text.size();
+  if (textSize < width) {
+    // print center
+    size_t pad = (width - textSize) / 2;
+    size_t other = width - pad;
+    cout << setw(pad) << "" << left << setw(other) << text;
+  } else {
+    // just print
+    cout << text;
+  }
+}
+
+void afficherClient(const Client & client) {
+  cout << "Nom: " << client.info.nom.prenom
+       << " " << client.info.nom.nom;
+
+  // Width of a table cell
+  const size_t TABLE_WIDTH = 18;
+
+  printBreaks(2);
+
+  // Print table headers
+  cout << left
+    << setw(TABLE_WIDTH) << " No. de compte"
+    << '|'
+    << setw(TABLE_WIDTH) << " Solde"
+    << '|'
+    << setw(TABLE_WIDTH) << " Marge de credit";
+
+  printBreaks(1);
+  // Print <hr>
+  printRepeat('-', (TABLE_WIDTH * 3) + 2);
+  printBreaks(1);
+
+  // Print each account info
+  for (size_t i = 0; i < COMPTES_MAX; i++) {
+    Compte compte = client.comptes[i];
+    printCenter(to_string(i + 1), TABLE_WIDTH);
+    cout << "|";
+    printCenter(toArgentStr(compte.solde), TABLE_WIDTH);
+    cout << "|";
+    printCenter(toArgentStr(compte.margeCredit), TABLE_WIDTH);
+    printBreaks(1);
+  }
+
+  printBreaks(1);
+
+  cout << "Informations personnelles";
+  printBreaks(2);
+
+  // Get infos
+  struct Info {
+    string key;
+    string value;
+  };
+  Info infos[7] = {
+    { "No. Civique", client.info.adresse.noCivique },
+    { "Rue", client.info.adresse.rue },
+    { "Ville", client.info.adresse.ville },
+    { "Code postal", client.info.adresse.codePostal },
+    { "Telephone", client.info.telephone },
+    { "NAS", client.info.nas },
+    { "\nMembre", toDateStr(client.date) },
+  };
+
+  cout << left;
+  for (size_t i = 0; i < 7; i++) {
+    Info info = infos[i];
+    cout << setw(TABLE_WIDTH) << info.key;
+    cout << ": ";
+    cout << setw(TABLE_WIDTH) << info.value;
+    printBreaks(1);
+  }
+}
+
+// MODELS
 
 bool ajouterClient(Banque &b, const Client& c) {
   if (b.cpt < CLIENTS_MAX) {
@@ -153,29 +267,47 @@ bool ajouterClient(Banque &b, const Client& c) {
   }
 }
 
-bool questionOuiNon(string question) {
-  cout << question << " (O/N) ";
-  int x = wherex(), y = wherey();
-  gotoxy(x, y + 5);
-  cout << "ekis esta en " << x << " y Y esta en " << y << "\n";
-  while(true) {
-    gotoxy(x, y);
-    // clreol();
-    // io_clean();
-    // gotoxy(x, y);
-    int ch = toupper(_getch());
-    cout << (char)ch << "(" << ch << ")\n";
-    /*if (ch == 'O') {
-      cout << "true\n";
-      return true;
-    } else if (ch == 'N') {
-      cout << "false\n";
-      return false;
-    }*//* else {
-      continue;
-    }*/
-  };
+bool supprimerClient(Banque &b, size_t id) {
+  if (id >= b.cpt) {
+    return false;
+  } else {
+    for (size_t i = id; i < b.cpt; i++) {
+        b.clients[id] = b.clients[id + 1];
+    }
+    b.cpt--;
+    return true;
+  }
 }
+
+optional<Client> getClient(const Banque &b, size_t id) {
+  if (id < b.cpt) {
+    return b.clients[id];
+  } else {
+    return {};
+  }
+}
+
+string toArgentStr(double argent) {
+  // save as fixed point
+  auto fixedPoint = static_cast<int64_t>(argent * 100);
+  // save as string
+  string str = (fixedPoint == 0) ? "000" : to_string(fixedPoint);
+  // Add dot to string
+  str.insert(str.size() - 2, ".");
+  // add dolar sign
+  str.append(" $");
+
+  return str;
+}
+
+string toDateStr(time_t time) {
+  struct tm timeinfo;
+  localtime_s(&timeinfo, &time);
+  return to_string(timeinfo.tm_mday) + "/"
+    + to_string(timeinfo.tm_mon) + "/"
+    + to_string(timeinfo.tm_year);
+}
+
 
 /*
  * Suggestion de fonctions
@@ -202,13 +334,11 @@ void io_bip() { Beep(200, 300); }
 
 void io_clean()                                             // pour vider les 2 tampons d'input
 {
-  cin.clear();                                              // s'assure que le cin est remis en marche
-  // your function didn't work and it's not standard
-  // https://www.geeksforgeeks.org/cpp/how-to-use-cin-fail-method-in-cpp/
-#undef max
-  cin.ignore(numeric_limits<streamsize>::max(), '\n');      // vide le tampon du cin
-  while (_kbhit())
-    (void)_getch();                                           // vide le tampon de la console
+  cin.clear();
+  cin.ignore(cin.rdbuf()->in_avail());
+  // vide le tampon du cin
+  //while (_kbhit())
+    //(void)_getch();                                           // vide le tampon de la console
 
     //  En détail:
     //  cin.rdbuf() retourne le tampon qui contient les caractères déjà tapés
@@ -342,8 +472,8 @@ void cmd_ajouter(Banque & b)
   // Prendre la date actuelle
   client.date = time(nullptr);
   cout << "Date de creation du dossier: ";
-  printDate(client.date);
-  cout << "\n\n";
+  cout << toDateStr(client.date);
+  printBreaks(2);
 
   // Save ?
   bool enregistrer = questionOuiNon("Enregistrer? ");
@@ -352,11 +482,22 @@ void cmd_ajouter(Banque & b)
   }
 }
 
-void cmd_afficher(/* Paramètres ? */) {
+void cmd_afficher(const Banque & b) {
   clrscr();
 
-  cout << "Vous etes dans Afficher";
+  cout << "CMD - afficher toutes les informations d'un client";
 
+  printBreaks(3);
+
+  auto client = getClient(b, 0);
+
+  if (client) {
+    afficherClient(client.value());
+  }
+
+  printBreaks(2);
+
+  cout << "Appuyez sur une touche pour continuer ... ";
   _getch();
 }
 
@@ -429,7 +570,7 @@ int main() {
 
     switch (cmd) {
       case Cmd::AJOUTER:      cmd_ajouter(b); break;
-      case Cmd::AFFICHER:     cmd_afficher(); break;
+      case Cmd::AFFICHER:     cmd_afficher(b); break;
       case Cmd::DEPOSER:      cmd_deposer(); break;
       case Cmd::RETIRER:      cmd_retirer(); break;
       case Cmd::VIRER:        cmd_virer(); break;
